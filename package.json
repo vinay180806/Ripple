@@ -1,0 +1,24 @@
+{
+  "name": "ripple-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ripple - Intelligent Codebase Understanding Platform",
+  "scripts": {
+    "dev": "node dev.js",
+    "dev:backend": "npm --prefix ripple-backend run dev",
+    "dev:frontend": "npm --prefix ripple-ui run dev",
+    "build": "npm --prefix ripple-backend run build && npm --prefix ripple-ui run build",
+    "test": "npm --prefix ripple-backend test",
+    "start": "node start.js"
+  },
+  "keywords": [
+    "ripple",
+    "codebase",
+    "ast",
+    "call-graph",
+    "impact-analysis",
+    "rag"
+  ],
+  "author": "Ripple Team",
+  "license": "ISC"
+}

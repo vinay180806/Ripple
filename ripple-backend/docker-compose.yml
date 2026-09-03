@@ -1,0 +1,74 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ripple-backend
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ripple
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=production_super_secret_jwt_key_32_bytes_long_ripple
+      - TOKEN_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-mock_github_client_id}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-mock_github_client_secret}
+      - GITHUB_CALLBACK_URL=${GITHUB_CALLBACK_URL:-http://localhost:4000/auth/github/callback}
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET:-mock_github_webhook_secret_key}
+      - TRACK_A_URL=${TRACK_A_URL:-http://track-a:5001}
+      - TRACK_B_URL=${TRACK_B_URL:-http://track-b:5002}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ripple-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: ripple-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ripple
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./src/db/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ripple-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ripple-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ripple-network
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  ripple-network:
+    driver: bridge

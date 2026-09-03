@@ -88,7 +88,7 @@ export default function RepoDetailPage({ params }: { params: Promise<{ id: strin
               <button className="btn btn-ghost btn-sm" onClick={() => router.push('/impact')} style={{ fontSize: 13 }}>
                 ⚡ Impact report
               </button>
-              <button className="btn btn-ghost btn-sm" onClick={() => router.push('/chat')}
+              <button className="btn btn-ghost btn-sm" onClick={() => router.push(`/dashboard?repo=${repo.name}`)}
                 style={{ fontSize: 13, background: 'rgba(34,211,238,0.08)', color: 'var(--cyan-400)', borderColor: 'rgba(34,211,238,0.2)' }}>
                 ◈ Ask about code
               </button>

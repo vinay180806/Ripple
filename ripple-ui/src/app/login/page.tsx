@@ -1,101 +1,193 @@
 'use client';
+
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { ApiClient } from '../lib/api';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // If already logged in, redirect to dashboard
+  useEffect(() => {
+    const token = ApiClient.getToken();
+    if (token) {
+      router.push('/dashboard');
+    }
+  }, [router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setLoading(true);
-    setTimeout(() => {
+
+    try {
+      await ApiClient.login(email, password);
+      router.push('/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Invalid email or password. Please try again.');
+    } finally {
       setLoading(false);
-      window.location.href = '/dashboard';
-    }, 1200);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const res: any = await ApiClient.getGoogleOAuthUrl();
+      if (res?.is_configured && res?.url) {
+        window.location.href = res.url;
+      } else {
+        router.push('/auth/google');
+      }
+    } catch {
+      router.push('/auth/google');
+    }
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'var(--bg-primary)',
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
-      {/* Background */}
-      <div className="glow-orb glow-purple" style={{ width: 500, height: 500, top: -100, left: -150, opacity: 0.3 }} />
-      <div className="glow-orb glow-cyan" style={{ width: 400, height: 400, bottom: -100, right: -100, opacity: 0.2 }} />
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        backgroundImage: `linear-gradient(rgba(139,92,246,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(139,92,246,0.04) 1px, transparent 1px)`,
-        backgroundSize: '60px 60px',
-      }} />
-
-      <div style={{ width: '100%', maxWidth: 420, padding: '0 24px', position: 'relative', zIndex: 1 }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--surface, #f8fafc)',
+        position: 'relative',
+        overflow: 'hidden',
+        padding: '24px',
+      }}
+    >
+      <div style={{ width: '100%', maxWidth: 420, position: 'relative', zIndex: 1 }}>
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <Link href="/" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 10,
-            textDecoration: 'none', color: 'var(--text-primary)',
-            fontSize: 22, fontWeight: 800,
-          }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 10,
-              background: 'var(--grad-primary)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 20, boxShadow: '0 0 30px rgba(139,92,246,0.6)',
-            }}>〜</div>
-            Ripple
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <Link
+            href="/"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 10,
+              textDecoration: 'none',
+              color: 'var(--text-primary, #0f172a)',
+              fontSize: 22,
+              fontWeight: 800,
+            }}
+          >
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 10,
+                background: 'var(--primary, #0f172a)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 18,
+                fontWeight: 800,
+              }}
+            >
+              〜
+            </div>
+            <span>Ripple</span>
           </Link>
-          <h1 style={{ marginTop: 32, fontSize: 28, fontWeight: 800, marginBottom: 8 }}>Welcome back</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Sign in to your workspace</p>
+          <h1 style={{ marginTop: 24, fontSize: 26, fontWeight: 800, color: 'var(--text-primary, #0f172a)', letterSpacing: '-0.02em', marginBottom: 6 }}>
+            Welcome back
+          </h1>
+          <p style={{ color: 'var(--text-secondary, #475569)', fontSize: 13.5 }}>
+            Sign in with Google Mail confirmation or work email
+          </p>
         </div>
 
-        <div className="glass-card" style={{ padding: 32 }}>
-          {/* GitHub OAuth */}
+        {/* Error Alert */}
+        {error && (
+          <div
+            style={{
+              padding: '12px 16px',
+              borderRadius: '8px',
+              background: '#fef2f2',
+              border: '1.5px solid #fecaca',
+              color: '#991b1b',
+              fontSize: '13px',
+              marginBottom: 20,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <span>⚠️</span>
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div
+          style={{
+            background: '#ffffff',
+            border: '1.5px solid var(--border-card, #e2e8f0)',
+            borderRadius: '12px',
+            padding: 32,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+          }}
+        >
+          {/* Sign in with Google Mail */}
           <button
+            type="button"
+            onClick={handleGoogleLogin}
             style={{
               width: '100%',
               padding: '12px 20px',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid var(--border-card)',
-              borderRadius: 'var(--radius-md)',
-              color: 'var(--text-primary)',
-              fontSize: 14,
-              fontWeight: 600,
+              background: '#ffffff',
+              border: '1.5px solid #e2e8f0',
+              borderRadius: '8px',
+              color: '#0f172a',
+              fontSize: '14px',
+              fontWeight: 700,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 10,
+              gap: 12,
               transition: 'all var(--transition-fast)',
-              fontFamily: 'Inter, sans-serif',
-              marginBottom: 24,
+              marginBottom: 20,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.09)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
           >
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+            <svg width="19" height="19" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+              />
             </svg>
-            Continue with GitHub
+            <span>Sign in with Google</span>
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-            <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
-            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>or with email</span>
-            <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+            <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>or with email</span>
+            <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
           </div>
 
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                Email
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
+                Email address
               </label>
               <input
                 type="email"
@@ -105,14 +197,21 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 id="email"
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: '1.5px solid #e2e8f0',
+                  background: '#f8fafc',
+                  color: '#0f172a',
+                  fontSize: 13.5,
+                  outline: 'none',
+                }}
               />
             </div>
 
-            <div style={{ marginBottom: 24 }}>
-              <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Password</label>
-                <a href="#" style={{ fontSize: 12, color: 'var(--purple-400)', textDecoration: 'none' }}>Forgot password?</a>
-              </div>
+            <div style={{ marginBottom: 22 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>Password</label>
               <input
                 type="password"
                 className="input"
@@ -121,6 +220,16 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 id="password"
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: '1.5px solid #e2e8f0',
+                  background: '#f8fafc',
+                  color: '#0f172a',
+                  fontSize: 13.5,
+                  outline: 'none',
+                }}
               />
             </div>
 
@@ -128,35 +237,28 @@ export default function LoginPage() {
               type="submit"
               className="btn btn-primary"
               disabled={loading}
-              style={{ width: '100%', padding: '13px', fontSize: 15, borderRadius: 'var(--radius-md)' }}
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: 14,
+                fontWeight: 700,
+                borderRadius: '8px',
+                justifyContent: 'center',
+              }}
               id="login-submit"
             >
-              {loading ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{
-                    width: 16, height: 16,
-                    border: '2px solid rgba(255,255,255,0.3)',
-                    borderTopColor: 'white',
-                    borderRadius: '50%',
-                    animation: 'spin 0.8s linear infinite',
-                    display: 'inline-block',
-                  }} />
-                  Signing in...
-                </span>
-              ) : 'Sign in'}
+              {loading ? 'Signing in...' : 'Sign in to Ripple'}
             </button>
           </form>
         </div>
 
-        <p style={{ textAlign: 'center', marginTop: 24, fontSize: 14, color: 'var(--text-muted)' }}>
+        <p style={{ textAlign: 'center', marginTop: 24, fontSize: 13.5, color: '#475569' }}>
           Don&apos;t have an account?{' '}
-          <Link href="/signup" style={{ color: 'var(--purple-400)', textDecoration: 'none', fontWeight: 600 }}>
-            Sign up free
+          <Link href="/signup" style={{ color: 'var(--secondary, #854d0e)', textDecoration: 'none', fontWeight: 700 }}>
+            Create one free
           </Link>
         </p>
       </div>
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

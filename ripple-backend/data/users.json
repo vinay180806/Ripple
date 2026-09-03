@@ -1,0 +1,26 @@
+[
+  {
+    "id": "c70a3483-9ba8-424c-a004-e3e16e103dd7",
+    "github_user_id": null,
+    "username": "nobody",
+    "email": "nooooook1216@gmail.com",
+    "password_hash": null,
+    "github_access_token_encrypted": null,
+    "avatar": null,
+    "bio": null,
+    "created_at": "2026-09-03T15:25:42.269Z",
+    "updated_at": "2026-09-03T15:29:50.022Z"
+  },
+  {
+    "id": "1da7f577-6fe6-4089-9fa3-3e6dad0d9bc7",
+    "github_user_id": null,
+    "username": "vis",
+    "email": "kasiviswas2006@gmail.com",
+    "password_hash": "$2a$12$jWGdH5KdqtG7R1RgI425de9rXr1jLDVmI/qzz6H96i2w6Gq.vQnjC",
+    "github_access_token_encrypted": null,
+    "avatar": null,
+    "bio": null,
+    "created_at": "2026-09-03T15:40:48.018Z",
+    "updated_at": "2026-09-03T15:40:48.018Z"
+  }
+]
