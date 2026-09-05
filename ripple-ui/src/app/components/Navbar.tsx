@@ -38,11 +38,7 @@ export default function Navbar() {
       } else {
         const isAuthRoute =
           pathname.startsWith('/dashboard') ||
-          pathname.startsWith('/impact') ||
-          pathname.startsWith('/graph') ||
-          pathname.startsWith('/settings') ||
-          pathname.startsWith('/integrations') ||
-          pathname.startsWith('/chat');
+          pathname.startsWith('/settings');
 
         setIsLoggedIn(isAuthRoute);
       }
@@ -98,7 +94,7 @@ export default function Navbar() {
         }}
       >
         {/* Logo - Aligned left above sidebar */}
-        <Link href={isLoggedIn ? '/dashboard' : '/'} className="nav-logo" style={{ textDecoration: 'none' }}>
+        <Link href="/" className="nav-logo" style={{ textDecoration: 'none' }}>
           <div className="nav-logo-icon">〜</div>
           <span>Ripple</span>
         </Link>

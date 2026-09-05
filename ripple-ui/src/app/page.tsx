@@ -416,8 +416,8 @@ export default function LandingPage() {
             <Link href="/signup" className="btn btn-primary" style={{ fontSize: 16, padding: '16px 40px', borderRadius: '14px' }}>
               Start for free →
             </Link>
-            <Link href="/impact" className="btn btn-secondary" style={{ fontSize: 16 }}>
-              See a live impact report
+            <Link href="/dashboard" className="btn btn-secondary" style={{ fontSize: 16 }}>
+              Explore dashboard
             </Link>
           </div>
         </div>

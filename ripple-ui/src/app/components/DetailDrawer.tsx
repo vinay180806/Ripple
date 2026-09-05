@@ -562,21 +562,6 @@ export default function DetailDrawer({
               })}
             </div>
           </div>
-
-          {/* Link to Full Graph */}
-          <Link
-            href="/graph"
-            className="btn btn-primary btn-sm"
-            style={{
-              marginTop: 4,
-              justifyContent: 'center',
-              padding: '10px 16px',
-              textDecoration: 'none',
-              fontWeight: 700,
-            }}
-          >
-            ⬡ Open Full Interactive Graph Canvas
-          </Link>
         </div>
       )}
     </aside>

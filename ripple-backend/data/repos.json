@@ -11,5 +11,18 @@
     "last_indexed_commit": "mock_head_commit_sha_01",
     "created_at": "2026-09-03T15:27:17.884Z",
     "updated_at": "2026-09-03T15:27:17.960Z"
+  },
+  {
+    "id": "dd97a75f-0379-40ce-80e5-bcc3a5f2edec",
+    "github_repo_id": "1345057589",
+    "github_url": "https://github.com/vinay180806/RazorRisk",
+    "owner_id": "b39e581e-a055-46af-9071-f647fecc2307",
+    "name": "RazorRisk",
+    "full_name": "vinay180806/RazorRisk",
+    "default_branch": "main",
+    "indexed_status": "complete",
+    "last_indexed_commit": "mock_head_commit_sha_01",
+    "created_at": "2026-09-05T15:01:15.671Z",
+    "updated_at": "2026-09-05T15:01:16.091Z"
   }
 ]
