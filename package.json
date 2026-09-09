@@ -5,10 +5,10 @@
   "description": "Ripple - Intelligent Codebase Understanding Platform",
   "scripts": {
     "dev": "node dev.js",
-    "dev:backend": "npm --prefix ripple-backend run dev",
-    "dev:frontend": "npm --prefix ripple-ui run dev",
-    "build": "npm --prefix ripple-backend run build && npm --prefix ripple-ui run build",
-    "test": "npm --prefix ripple-backend test",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix backend install && npm --prefix backend run build && npm --prefix frontend install && npm --prefix frontend run build",
+    "test": "npm --prefix backend test",
     "start": "node start.js"
   },
   "keywords": [

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "6f5df367-0c7b-477d-8db3-d67df5fa3528",
+    "user_id": "c70a3483-9ba8-424c-a004-e3e16e103dd7",
+    "type": "repo_connected",
+    "title": "Connected GitHub repository",
+    "description": "Linked nobodynook/TRIAGE.AI (main)",
+    "metadata": {
+      "repo_id": "c1af83d1-c205-4c33-a1d7-ae2d9789d133",
+      "full_name": "nobodynook/TRIAGE.AI"
+    },
+    "created_at": "2026-09-03T15:27:17.909Z"
+  },
+  {
+    "id": "d5d2d3e4-a385-4ccc-8a17-5b113a85ba5b",
+    "user_id": "c70a3483-9ba8-424c-a004-e3e16e103dd7",
+    "type": "repo_connected",
+    "title": "Connected GitHub repository",
+    "description": "Linked nobodynook/TRIAGE.AI (main)",
+    "metadata": {
+      "repo_id": "c1af83d1-c205-4c33-a1d7-ae2d9789d133",
+      "full_name": "nobodynook/TRIAGE.AI"
+    },
+    "created_at": "2026-09-03T15:28:29.098Z"
+  },
+  {
+    "id": "ed12a1de-8cda-481b-9c43-5c29ae691f46",
+    "user_id": "b39e581e-a055-46af-9071-f647fecc2307",
+    "type": "repo_connected",
+    "title": "Connected GitHub repository",
+    "description": "Linked vinay180806/RazorRisk (main)",
+    "metadata": {
+      "repo_id": "dd97a75f-0379-40ce-80e5-bcc3a5f2edec",
+      "full_name": "vinay180806/RazorRisk"
+    },
+    "created_at": "2026-09-05T15:01:15.762Z"
+  },
+  {
+    "id": "647c0313-c159-49f8-a363-633d0708279e",
+    "user_id": "b39e581e-a055-46af-9071-f647fecc2307",
+    "type": "repo_connected",
+    "title": "Connected GitHub repository",
+    "description": "Linked vinay180806/LastMinute (main)",
+    "metadata": {
+      "repo_id": "e81fb6e4-a771-4fc8-b362-36b3c5282986",
+      "full_name": "vinay180806/LastMinute"
+    },
+    "created_at": "2026-09-07T10:51:20.949Z"
+  },
+  {
+    "id": "a9b5d96b-6b3a-42ba-a2c2-b0f5f803e401",
+    "user_id": "b39e581e-a055-46af-9071-f647fecc2307",
+    "type": "qa_query",
+    "title": "Explored codebase with Q&A",
+    "description": "Asked: \"what does lastminute do...?\" on LastMinute",
+    "metadata": {
+      "repo_id": "e81fb6e4-a771-4fc8-b362-36b3c5282986",
+      "repo_name": "LastMinute"
+    },
+    "created_at": "2026-09-07T10:59:01.810Z"
+  }
+]

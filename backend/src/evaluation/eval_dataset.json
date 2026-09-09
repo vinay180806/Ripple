@@ -1,0 +1,167 @@
+{
+  "_comment": "Evaluation dataset for Track B RAG pipeline. Pin to a specific commit before writing questions — chunk IDs will silently go stale if the repo changes.",
+  "pinned_commit_hash": "REPLACE_WITH_ACTUAL_COMMIT_SHA",
+  "repo_id": "REPLACE_WITH_ACTUAL_REPO_UUID",
+  "questions": [
+    {
+      "id": "q01",
+      "type": "single_function_lookup",
+      "question": "What function handles user authentication and where is it defined?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["authenticate", "middleware"],
+      "notes": "Should surface the auth middleware function"
+    },
+    {
+      "id": "q02",
+      "type": "single_function_lookup",
+      "question": "How does the login flow work?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["login", "auth"],
+      "notes": "Should find auth.service login function"
+    },
+    {
+      "id": "q03",
+      "type": "single_function_lookup",
+      "question": "Where is the JWT token created and what claims does it include?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["jwt", "token", "sign"],
+      "notes": "Should find token signing logic"
+    },
+    {
+      "id": "q04",
+      "type": "single_function_lookup",
+      "question": "How are GitHub webhooks verified for authenticity?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["signature", "hmac", "sha256"],
+      "notes": "Should find WebhookService.verifySignature"
+    },
+    {
+      "id": "q05",
+      "type": "single_function_lookup",
+      "question": "What happens when a repository is linked to the platform?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["repo", "github"],
+      "notes": "Should surface repo linking/creation logic"
+    },
+    {
+      "id": "q06",
+      "type": "single_function_lookup",
+      "question": "How is the Redis cache invalidated when a repo is updated?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["deletePattern", "cache", "invalidat"],
+      "notes": "Should find cache invalidation logic"
+    },
+    {
+      "id": "q07",
+      "type": "single_function_lookup",
+      "question": "What database schema is used for storing sessions?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["session", "token", "expires_at"],
+      "notes": "Should find sessions schema or SQL migration"
+    },
+    {
+      "id": "q08",
+      "type": "single_function_lookup",
+      "question": "How does the Q&A history get recorded?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["QAHistory", "create", "question"],
+      "notes": "Should find QAHistoryRepository.create"
+    },
+    {
+      "id": "q09",
+      "type": "graph_dependent",
+      "question": "What functions are affected if the authenticate middleware changes?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["authenticate", "callers", "routes"],
+      "notes": "Requires graph blast-radius data to answer properly"
+    },
+    {
+      "id": "q10",
+      "type": "graph_dependent",
+      "question": "Which routes call the repo controller and what HTTP methods do they use?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["repo", "route", "GET", "POST"],
+      "notes": "Requires graph caller data"
+    },
+    {
+      "id": "q11",
+      "type": "graph_dependent",
+      "question": "If the database connection pool configuration changes, what services are directly impacted?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["db", "pool", "connection"],
+      "notes": "Graph-traversal question about dependency on db module"
+    },
+    {
+      "id": "q12",
+      "type": "multi_hop",
+      "question": "How does a GitHub push event eventually trigger re-embedding of changed files?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["webhook", "push", "embed"],
+      "notes": "Requires following: webhook -> queue -> job -> track B embedding"
+    },
+    {
+      "id": "q13",
+      "type": "multi_hop",
+      "question": "What is the complete flow from a Q&A API request to receiving an answer, including caching?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["cache", "trackB", "answer"],
+      "notes": "Should trace the full request path through QA controller"
+    },
+    {
+      "id": "q14",
+      "type": "unanswerable",
+      "question": "What is the algorithm used to sort search results in the Elasticsearch cluster?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["don't have enough context"],
+      "notes": "This project does not use Elasticsearch — should trigger low-confidence fallback"
+    },
+    {
+      "id": "q15",
+      "type": "unanswerable",
+      "question": "How does the payment processing integration with Stripe work?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["don't have enough context"],
+      "notes": "No Stripe integration exists — should trigger low-confidence fallback"
+    },
+    {
+      "id": "q16",
+      "type": "unanswerable",
+      "question": "What is the ML model used for code similarity detection?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["don't have enough context"],
+      "notes": "No ML similarity model in codebase — tests Phase 5 fallback"
+    },
+    {
+      "id": "q17",
+      "type": "single_function_lookup",
+      "question": "How are user passwords stored and hashed?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["bcrypt", "hash", "password"],
+      "notes": "Should find password hashing in auth service"
+    },
+    {
+      "id": "q18",
+      "type": "single_function_lookup",
+      "question": "What rate limiting is applied to the Q&A endpoint?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["rate", "limit", "QA_RATE"],
+      "notes": "Should find rate limiter config for QA routes"
+    },
+    {
+      "id": "q19",
+      "type": "graph_dependent",
+      "question": "Which functions read from or write to the repos table?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["RepoRepository", "repos"],
+      "notes": "Should identify all callers of RepoRepository methods via graph"
+    },
+    {
+      "id": "q20",
+      "type": "unanswerable",
+      "question": "What TypeScript decorators are used for dependency injection?",
+      "expected_chunk_ids": [],
+      "expected_answer_contains": ["don't have enough context"],
+      "notes": "Project does not use DI decorators — tests Phase 5 fallback"
+    }
+  ]
+}

@@ -13,7 +13,7 @@ console.log('\x1b[36m%s\x1b[0m', '───────────────�
 
 // Spawn Backend
 const backend = spawn(npmCmd, ['run', 'dev'], {
-  cwd: path.resolve(__dirname, 'ripple-backend'),
+  cwd: path.resolve(__dirname, 'backend'),
   stdio: ['inherit', 'pipe', 'pipe'],
   shell: true,
 });
@@ -34,7 +34,7 @@ backend.stderr.on('data', (data) => {
 
 // Spawn Frontend
 const frontend = spawn(npmCmd, ['run', 'dev'], {
-  cwd: path.resolve(__dirname, 'ripple-ui'),
+  cwd: path.resolve(__dirname, 'frontend'),
   stdio: ['inherit', 'pipe', 'pipe'],
   shell: true,
 });
