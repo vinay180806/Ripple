@@ -13,9 +13,9 @@ export async function bootstrap() {
   app.use(notFoundHandler);
   app.use(errorHandler);
 
-  const server = app.listen(env.PORT, () => {
-    logger.info(`Ripple Backend Platform running on port ${env.PORT} in ${env.NODE_ENV} mode`);
-  });
+  const server = app.listen(env.PORT, '0.0.0.0', () => {
+  logger.info(`Ripple Backend Platform running on port ${env.PORT} in ${env.NODE_ENV} mode`);
+});
 
   const shutdown = async (signal: string) => {
     logger.info(`Received ${signal}, initiating graceful shutdown...`);
