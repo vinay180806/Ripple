@@ -3,63 +3,28 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ApiClient, type UserProfileData } from '../lib/api';
+import { ApiClient } from '../lib/api';
+import { useCurrentUser } from '../lib/userContext';
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [user, setUser] = useState<UserProfileData | null>(null);
+
+  // Single shared fetch — no individual /auth/me call here
+  const user = useCurrentUser();
+  const isLoggedIn = !!ApiClient.getToken();
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handler);
-
-    const checkAuth = async () => {
-      const token = ApiClient.getToken();
-      const stored = ApiClient.getStoredUser();
-
-      if (stored) {
-        setUser(stored);
-      }
-
-      if (token) {
-        setIsLoggedIn(true);
-        try {
-          const profile = await ApiClient.getMe();
-          if (profile) {
-            setUser(profile);
-          }
-        } catch {
-          // Keep stored if available
-        }
-      } else {
-        const isAuthRoute =
-          pathname.startsWith('/dashboard') ||
-          pathname.startsWith('/settings');
-
-        setIsLoggedIn(isAuthRoute);
-      }
-    };
-
-    checkAuth();
-    window.addEventListener('ripple_auth_changed', checkAuth);
-    window.addEventListener('ripple_profile_updated', checkAuth);
-
-    return () => {
-      window.removeEventListener('scroll', handler);
-      window.removeEventListener('ripple_auth_changed', checkAuth);
-      window.removeEventListener('ripple_profile_updated', checkAuth);
-    };
-  }, [pathname]);
+    return () => window.removeEventListener('scroll', handler);
+  }, []);
 
   const handleLogout = () => {
     ApiClient.clearToken();
-    setIsLoggedIn(false);
     setShowProfileMenu(false);
-    setUser(null);
     router.push('/login');
   };
 

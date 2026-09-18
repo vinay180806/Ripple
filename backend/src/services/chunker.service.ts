@@ -172,6 +172,13 @@ export class ChunkerService {
       logger.warn(`[Chunker] Duplicate chunk_ids detected! ${ids.length - uniqueIds.size} duplicates`);
     }
 
+    // If Track A provided no usable nodes, fall back to file-based chunking
+    if (chunks.length === 0) {
+      logger.info(`[Chunker] No AST chunks produced — falling back to file-based chunker for repo ${repoId}`);
+      const fallbackChunks = await ChunkerService.chunkWorkspace(repoId, workspacePath, commitHash);
+      chunks.push(...fallbackChunks);
+    }
+
     logger.info(`[Chunker] Produced ${chunks.length} chunks for repo ${repoId}`);
     return chunks;
   }
@@ -304,6 +311,142 @@ export class ChunkerService {
       }
     }
     flush();
+    return chunks;
+  }
+
+  /**
+   * File-based fallback chunker — scans the workspace for source files and
+   * splits them into chunks using regex function detection and fixed-size windows.
+   * Used when Track A provides no graph nodes with line-number information.
+   */
+  public static async chunkWorkspace(
+    repoId: string,
+    workspacePath: string,
+    commitHash: string
+  ): Promise<ChunkRecord[]> {
+    const CODE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.java', '.rs', '.md', '.mdx']);
+    const IGNORE_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '__pycache__', 'venv', '.venv']);
+    const CHUNK_SIZE = 80; // lines per chunk
+    const chunks: ChunkRecord[] = [];
+    const chunkIdsSeen = new Set<string>();
+
+    // Function signature patterns for common languages
+    const FUNC_RE = /^(?:export\s+)?(?:async\s+)?(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\(|class\s+(\w+)|def\s+(\w+)|func\s+(\w+)|public\s+(?:static\s+)?(?:\w+\s+)+(\w+)\s*\()/;
+
+    const walkDir = (dir: string): string[] => {
+      const results: string[] = [];
+      let entries: fs.Dirent[];
+      try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+      } catch {
+        return results;
+      }
+      for (const entry of entries) {
+        if (IGNORE_DIRS.has(entry.name)) continue;
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          results.push(...walkDir(fullPath));
+        } else if (entry.isFile() && CODE_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
+          results.push(fullPath);
+        }
+      }
+      return results;
+    };
+
+    const files = walkDir(workspacePath);
+    logger.info(`[Chunker:fallback] Found ${files.length} source files in ${workspacePath}`);
+
+    for (const fullPath of files) {
+      const relPath = path.relative(workspacePath, fullPath).replace(/\\/g, '/');
+      const ext = path.extname(fullPath).toLowerCase();
+
+      let content: string;
+      try {
+        content = fs.readFileSync(fullPath, 'utf8');
+      } catch {
+        continue;
+      }
+
+      // Markdown: use heading-based chunker
+      if (ext === '.md' || ext === '.mdx') {
+        const mdChunks = ChunkerService.chunkMarkdown(repoId, relPath, content, commitHash);
+        for (const c of mdChunks) {
+          if (!chunkIdsSeen.has(c.chunk_id)) {
+            chunkIdsSeen.add(c.chunk_id);
+            chunks.push(c);
+          }
+        }
+        continue;
+      }
+
+      // Code: split into function-boundary chunks or fixed-size windows
+      const lines = content.split('\n');
+      if (lines.length === 0) continue;
+
+      // Find candidate function start lines
+      const funcStarts: Array<{ line: number; name: string }> = [];
+      for (let i = 0; i < lines.length; i++) {
+        const m = FUNC_RE.exec(lines[i]);
+        if (m) {
+          const name = m[1] || m[2] || m[3] || m[4] || m[5] || m[6] || `chunk_${i}`;
+          funcStarts.push({ line: i, name });
+        }
+      }
+
+      // If no function boundaries found, fall back to fixed-size windows
+      if (funcStarts.length === 0) {
+        for (let start = 0; start < lines.length; start += CHUNK_SIZE) {
+          const end = Math.min(start + CHUNK_SIZE, lines.length);
+          const text = lines.slice(start, end).join('\n').trim();
+          if (!text) continue;
+          const chunkId = `${repoId}:${relPath}:block_${start}`;
+          if (chunkIdsSeen.has(chunkId)) continue;
+          chunkIdsSeen.add(chunkId);
+          chunks.push({
+            chunk_id: chunkId,
+            text,
+            metadata: {
+              file_path: relPath,
+              caller_count: 0,
+              callee_count: 0,
+              language: ChunkerService.detectLanguage(ext),
+              source_commit_hash: commitHash,
+            },
+          });
+        }
+        continue;
+      }
+
+      // Create one chunk per function (capped at OVERSIZED_LINE_THRESHOLD, sub-chunked beyond that)
+      for (let fi = 0; fi < funcStarts.length; fi++) {
+        const startLine = funcStarts[fi].line;
+        const endLine = fi + 1 < funcStarts.length
+          ? Math.min(funcStarts[fi + 1].line, startLine + OVERSIZED_LINE_THRESHOLD)
+          : Math.min(lines.length, startLine + OVERSIZED_LINE_THRESHOLD);
+
+        const text = lines.slice(startLine, endLine).join('\n').trim();
+        if (!text || text.length < 30) continue;
+
+        const chunkId = `${repoId}:${relPath}:${funcStarts[fi].name}:${startLine}`;
+        if (chunkIdsSeen.has(chunkId)) continue;
+        chunkIdsSeen.add(chunkId);
+
+        chunks.push({
+          chunk_id: chunkId,
+          text,
+          metadata: {
+            file_path: relPath,
+            function_name: funcStarts[fi].name,
+            caller_count: 0,
+            callee_count: 0,
+            language: ChunkerService.detectLanguage(ext),
+            source_commit_hash: commitHash,
+          },
+        });
+      }
+    }
+
+    logger.info(`[Chunker:fallback] Produced ${chunks.length} fallback chunks from ${files.length} files`);
     return chunks;
   }
 

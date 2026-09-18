@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ApiClient, type UserProfileData } from '../lib/api';
+import { useCurrentUser } from '../lib/userContext';
 
 interface NavItem {
   icon: (active: boolean) => React.ReactNode;
@@ -49,32 +49,8 @@ const systemNavItems: NavItem[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [user, setUser] = useState<UserProfileData | null>(null);
-
-  useEffect(() => {
-    const loadUser = async () => {
-      const stored = ApiClient.getStoredUser();
-      if (stored) setUser(stored);
-
-      const token = ApiClient.getToken();
-      if (token) {
-        try {
-          const profile = await ApiClient.getMe();
-          if (profile) setUser(profile);
-        } catch {
-          // ignore
-        }
-      }
-    };
-
-    loadUser();
-    window.addEventListener('ripple_auth_changed', loadUser);
-    window.addEventListener('ripple_profile_updated', loadUser);
-    return () => {
-      window.removeEventListener('ripple_auth_changed', loadUser);
-      window.removeEventListener('ripple_profile_updated', loadUser);
-    };
-  }, []);
+  // Single shared fetch — no individual /auth/me call here
+  const user = useCurrentUser();
 
   const displayName = user?.username || 'User';
   const displayEmail = user?.email || 'user@example.com';

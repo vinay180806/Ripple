@@ -10,6 +10,7 @@ export interface IndexRepoJobData {
   ownerId: string;
   defaultBranch: string;
   commitSha?: string;
+  personalAccessToken?: string;
 }
 
 export const INDEX_REPO_QUEUE_NAME = 'index-repo';

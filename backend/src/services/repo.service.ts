@@ -67,6 +67,7 @@ export class RepoService {
         githubUrl: repo.github_url,
         ownerId: repo.owner_id,
         defaultBranch: repo.default_branch,
+        personalAccessToken: input.personal_access_token,
       });
     } catch (err) {
       logger.warn(`Failed to enqueue BullMQ index job for repo ${repo.id}`, {}, err as Error);
@@ -119,6 +120,21 @@ export class RepoService {
     await cacheService.deletePattern(`qa:${repoId}:*`);
     await cacheService.deletePattern(`impact:${repoId}:*`);
     logger.info(`Deleted repository ${repoId} and cleared associated caches`);
+  }
+
+  public static async reindexRepo(repoId: string, userId: string): Promise<void> {
+    const repo = await RepoRepository.findById(repoId);
+    if (!repo) throw new AppError('Repository not found', 404, 'REPO_NOT_FOUND');
+    if (repo.owner_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
+
+    await indexRepoQueue.addJob('index-repository', {
+      repoId: repo.id,
+      githubRepoId: repo.github_repo_id,
+      githubUrl: repo.github_url,
+      ownerId: repo.owner_id,
+      defaultBranch: repo.default_branch,
+    });
+    logger.info(`Re-index job dispatched for repo ${repoId}`);
   }
 
   public static async findByGithubRepoId(githubRepoId: string): Promise<RepoRow | null> {

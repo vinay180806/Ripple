@@ -103,6 +103,17 @@ export class RepoController {
     }
   }
 
+  public static async reindex(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
+      const repoId = getParamId(req);
+      await RepoService.reindexRepo(repoId, req.user.userId);
+      res.status(202).json({ status: 'ok', data: { message: 'Re-indexing started' } });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   public static async delete(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) {

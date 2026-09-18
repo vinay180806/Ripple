@@ -1,4 +1,4 @@
-﻿-- Enable pgvector extension for vector similarity search
+-- Enable pgvector extension for vector similarity search
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Code Chunks table: stores function/section chunks with their embeddings

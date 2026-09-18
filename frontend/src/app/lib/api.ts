@@ -93,9 +93,23 @@ export class ApiClient {
       const json = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        const errorCode = json?.error?.code;
         const errorMsg = json?.error?.message || json?.message || `HTTP ${response.status} Error`;
+
+        // Token expired or session invalidated — clear local storage and send to login
+        if (
+          response.status === 401 &&
+          (errorCode === 'TOKEN_EXPIRED' || errorCode === 'SESSION_INVALID' || errorCode === 'UNAUTHORIZED')
+        ) {
+          this.clearToken();
+          if (typeof window !== 'undefined') {
+            window.location.href = '/auth';
+          }
+          throw new Error('Session expired. Please sign in again.');
+        }
+
         const err: any = new Error(errorMsg);
-        err.code = json?.error?.code;
+        err.code = errorCode;
         err.status = response.status;
         throw err;
       }
