@@ -4,34 +4,40 @@ import { processIndexJob } from '../jobs/workers/index.worker';
 
 const p = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
-async function indexRepo(row: any) {
-  console.log(`\nIndexing: ${row.name} (${row.id})`);
-  await processIndexJob({
-    repoId: row.id,
-    githubRepoId: row.github_repo_id || row.id,
-    githubUrl: row.github_url,
-    ownerId: row.owner_id,
-    defaultBranch: row.default_branch || 'main',
-  });
-  console.log(`Done: ${row.name}`);
-}
-
 async function main() {
-  // Reset any stuck 'indexing' repos back to pending so they rerun cleanly
-  await p.query("UPDATE repos SET indexed_status = 'pending' WHERE indexed_status = 'indexing'");
-  console.log('Reset stuck indexing repos to pending');
+  // Get all repos or a specific one
+  const repoName = process.argv[2]; // optional: pass repo name as arg
+  const query = repoName
+    ? 'SELECT id, name, github_url, github_repo_id, owner_id, default_branch FROM repos WHERE name = $1'
+    : 'SELECT id, name, github_url, github_repo_id, owner_id, default_branch FROM repos';
+  const res = await p.query(query, repoName ? [repoName] : []);
 
-  const res = await p.query(
-    "SELECT id, name, github_url, github_repo_id, owner_id, default_branch FROM repos WHERE indexed_status = 'pending' ORDER BY created_at ASC"
-  );
-  console.log(`Found ${res.rows.length} repos to index: ${res.rows.map((r: any) => r.name).join(', ')}`);
-  await p.end();
+  if (!res.rows.length) { console.error('No repos found'); await p.end(); return; }
 
-  for (const row of res.rows) {
-    await indexRepo(row);
+  for (const repo of res.rows) {
+    console.log(`\nCleaning chunks for: ${repo.name}`);
+    const del = await p.query('DELETE FROM code_chunks WHERE repo_id = $1', [repo.id]);
+    console.log(`Deleted ${del.rowCount} old chunks`);
+
+    await p.query("UPDATE repos SET indexed_status = 'pending' WHERE id = $1", [repo.id]);
   }
 
-  console.log('\nAll repos indexed successfully');
+  await p.end();
+
+  // Re-index each repo fresh
+  for (const repo of res.rows) {
+    console.log(`\nIndexing: ${repo.name} (${repo.id})`);
+    await processIndexJob({
+      repoId: repo.id,
+      githubRepoId: repo.github_repo_id || repo.id,
+      githubUrl: repo.github_url,
+      ownerId: repo.owner_id,
+      defaultBranch: repo.default_branch || 'main',
+    });
+    console.log(`Done: ${repo.name}`);
+  }
+
+  console.log('\nAll done!');
 }
 
-main().catch((err) => { console.error('FAILED:', err.message); process.exit(1); });
+main().catch((err) => { console.error('FAILED:', err.message, err.stack); process.exit(1); });

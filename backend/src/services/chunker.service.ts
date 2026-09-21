@@ -324,8 +324,8 @@ export class ChunkerService {
     workspacePath: string,
     commitHash: string
   ): Promise<ChunkRecord[]> {
+    const { SKIP_DIRS } = await import('../jobs/workers/index.worker');
     const CODE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.java', '.rs', '.md', '.mdx']);
-    const IGNORE_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '__pycache__', 'venv', '.venv']);
     const CHUNK_SIZE = 80; // lines per chunk
     const chunks: ChunkRecord[] = [];
     const chunkIdsSeen = new Set<string>();
@@ -342,7 +342,7 @@ export class ChunkerService {
         return results;
       }
       for (const entry of entries) {
-        if (IGNORE_DIRS.has(entry.name)) continue;
+        if (SKIP_DIRS.has(entry.name)) continue;
         const fullPath = path.join(dir, entry.name);
         if (entry.isDirectory()) {
           results.push(...walkDir(fullPath));

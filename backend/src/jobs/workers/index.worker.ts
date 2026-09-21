@@ -16,11 +16,26 @@ const CODE_EXTENSIONS = new Set([
   '.md', '.mdx', '.json', '.yaml', '.yml', '.sh', '.env.example',
 ]);
 
+// Directories that are never source code — skip them entirely
+const SKIP_DIRS = new Set([
+  'node_modules', '.git', 'dist', 'build', '.next',
+  '__pycache__', 'venv', '.venv', 'env',
+  'data',       // ML training data, fixtures, corpora
+  'vendor',     // vendored dependencies
+  'coverage',   // test coverage reports
+  'fixtures',   // test fixtures
+  '.cache', '.parcel-cache', '.turbo',
+]);
+
+import AdmZip from 'adm-zip';
+
+export { SKIP_DIRS, CODE_EXTENSIONS };
+
 /**
- * Fetch all source files from a GitHub repo via the REST API.
- * No git required — works for public repos, and private repos with a PAT.
+ * Download the repo as a single zip archive and extract only source files.
+ * Uses GitHub's zipball endpoint — one HTTP request, no per-file rate limiting.
  */
-async function fetchRepoFilesViaApi(
+async function fetchRepoFilesViaZip(
   githubUrl: string,
   destDir: string,
   branch: string,
@@ -30,51 +45,46 @@ async function fetchRepoFilesViaApi(
   const headers: Record<string, string> = { 'User-Agent': 'Ripple-Backend-Platform' };
   if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
 
-  // 1. Get the commit SHA for the branch
-  const branchRes = await axios.get(
-    `https://api.github.com/repos/${owner}/${repo}/branches/${branch}`,
-    { headers }
-  );
-  const treeSha: string = branchRes.data.commit.commit.tree.sha;
+  logger.info(`[IndexWorker] Downloading zip for ${owner}/${repo}@${branch}`);
 
-  // 2. Get the full recursive file tree
-  const treeRes = await axios.get(
-    `https://api.github.com/repos/${owner}/${repo}/git/trees/${treeSha}?recursive=1`,
-    { headers }
+  // Download the zipball — GitHub redirects, axios follows automatically
+  const zipRes = await axios.get(
+    `https://api.github.com/repos/${owner}/${repo}/zipball/${branch}`,
+    { headers, responseType: 'arraybuffer', maxRedirects: 5 }
   );
 
-  const items: Array<{ path: string; type: string; url: string }> = treeRes.data.tree;
-  const files = items.filter((item) => {
-    if (item.type !== 'blob') return false;
-    const ext = path.extname(item.path).toLowerCase();
-    const base = path.basename(item.path).toLowerCase();
-    // Skip generated/vendor dirs
-    const parts = item.path.split('/');
-    if (parts.some((p) => ['node_modules', '.git', 'dist', 'build', '.next', '__pycache__', 'venv'].includes(p))) return false;
-    return CODE_EXTENSIONS.has(ext) || base === '.env.example';
-  });
+  const zip = new AdmZip(Buffer.from(zipRes.data));
+  const entries = zip.getEntries();
 
-  logger.info(`[IndexWorker] GitHub API: found ${files.length} source files to download`);
+  // GitHub zips have a top-level folder like "owner-repo-sha/" — strip it
+  const topDir = entries[0]?.entryName.split('/')[0] ?? '';
 
-  // 3. Download each file's content
-  let downloaded = 0;
-  for (const file of files) {
-    try {
-      const blobRes = await axios.get(file.url, { headers });
-      const content = Buffer.from(blobRes.data.content, 'base64').toString('utf8');
-      const filePath = path.join(destDir, file.path);
-      fs.mkdirSync(path.dirname(filePath), { recursive: true });
-      fs.writeFileSync(filePath, content, 'utf8');
-      downloaded++;
-    } catch {
-      // Skip unreadable files
-    }
+  let extracted = 0;
+  for (const entry of entries) {
+    if (entry.isDirectory) continue;
+
+    // Strip the GitHub-added top-level prefix
+    const relPath = entry.entryName.startsWith(topDir + '/')
+      ? entry.entryName.slice(topDir.length + 1)
+      : entry.entryName;
+
+    const parts = relPath.split('/');
+    const ext = path.extname(relPath).toLowerCase();
+    const base = path.basename(relPath).toLowerCase();
+
+    // Skip non-code dirs and non-code extensions
+    if (parts.some((p) => SKIP_DIRS.has(p))) continue;
+    if (!CODE_EXTENSIONS.has(ext) && base !== '.env.example') continue;
+
+    const destPath = path.join(destDir, relPath);
+    fs.mkdirSync(path.dirname(destPath), { recursive: true });
+    fs.writeFileSync(destPath, entry.getData());
+    extracted++;
   }
 
-  logger.info(`[IndexWorker] Downloaded ${downloaded}/${files.length} files into ${destDir}`);
-  return downloaded;
+  logger.info(`[IndexWorker] Extracted ${extracted} source files into ${destDir} (skipped data/, node_modules/, etc.)`);
+  return extracted;
 }
-
 export async function processIndexJob(data: IndexRepoJobData): Promise<void> {
   const commitSha = data.commitSha || 'head';
   logger.info(`Starting indexing job for repo ${data.repoId} (${data.githubUrl}) at commit ${commitSha}`);
@@ -84,9 +94,9 @@ export async function processIndexJob(data: IndexRepoJobData): Promise<void> {
 
   try {
     await WorkspaceService.withWorkspace(`job_index_${data.repoId}`, async (workspacePath) => {
-      // 2. Fetch source files via GitHub API into workspacePath
+      // 2. Download repo as zip and extract source files (skips data/, node_modules/, etc.)
       try {
-        const fileCount = await fetchRepoFilesViaApi(
+        const fileCount = await fetchRepoFilesViaZip(
           data.githubUrl,
           workspacePath,
           data.defaultBranch || 'main',
