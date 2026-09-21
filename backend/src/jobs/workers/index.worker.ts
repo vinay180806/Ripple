@@ -59,23 +59,35 @@ async function fetchRepoFilesViaZip(
   // GitHub zips have a top-level folder like "owner-repo-sha/" — strip it
   const topDir = entries[0]?.entryName.split('/')[0] ?? '';
 
+  // Cap at 500 files — prioritise READMEs, then code, then docs
+  const MAX_FILES = 500;
+  const prioritised = entries
+    .filter((e) => !e.isDirectory)
+    .map((e) => {
+      const relPath = e.entryName.startsWith(topDir + '/')
+        ? e.entryName.slice(topDir.length + 1)
+        : e.entryName;
+      return { entry: e, relPath };
+    })
+    .filter(({ relPath }) => {
+      const parts = relPath.split('/');
+      const ext = path.extname(relPath).toLowerCase();
+      const base = path.basename(relPath).toLowerCase();
+      if (parts.some((p) => SKIP_DIRS.has(p))) return false;
+      return CODE_EXTENSIONS.has(ext) || base === '.env.example';
+    })
+    .sort((a, b) => {
+      // README/docs at root first, then by depth (shallower = higher priority)
+      const aDepth = a.relPath.split('/').length;
+      const bDepth = b.relPath.split('/').length;
+      const aIsReadme = a.relPath.toLowerCase().includes('readme') ? -1 : 0;
+      const bIsReadme = b.relPath.toLowerCase().includes('readme') ? -1 : 0;
+      return aIsReadme - bIsReadme || aDepth - bDepth;
+    })
+    .slice(0, MAX_FILES);
+
   let extracted = 0;
-  for (const entry of entries) {
-    if (entry.isDirectory) continue;
-
-    // Strip the GitHub-added top-level prefix
-    const relPath = entry.entryName.startsWith(topDir + '/')
-      ? entry.entryName.slice(topDir.length + 1)
-      : entry.entryName;
-
-    const parts = relPath.split('/');
-    const ext = path.extname(relPath).toLowerCase();
-    const base = path.basename(relPath).toLowerCase();
-
-    // Skip non-code dirs and non-code extensions
-    if (parts.some((p) => SKIP_DIRS.has(p))) continue;
-    if (!CODE_EXTENSIONS.has(ext) && base !== '.env.example') continue;
-
+  for (const { entry, relPath } of prioritised) {
     const destPath = path.join(destDir, relPath);
     fs.mkdirSync(path.dirname(destPath), { recursive: true });
     fs.writeFileSync(destPath, entry.getData());

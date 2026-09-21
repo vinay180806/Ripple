@@ -125,6 +125,13 @@ export class GitHubService {
       if (err.response?.status === 404) {
         throw new AppError(`Repository "${owner}/${repo}" was not found on GitHub or is private. Please check permissions or token.`, 404, 'REPO_NOT_FOUND');
       }
+      if (err.response?.status === 403 || err.response?.status === 429) {
+        throw new AppError(
+          'GitHub API rate limit reached. Please wait a few minutes and try again, or connect a GitHub Personal Access Token.',
+          429,
+          'GITHUB_RATE_LIMIT'
+        );
+      }
       throw new AppError('Failed to access repository from GitHub API', 502, 'GITHUB_API_ERROR');
     }
   }
