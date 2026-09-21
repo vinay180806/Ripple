@@ -89,7 +89,7 @@ export class PromptBuilderService {
 
 1. Only state claims that are directly supported by the GRAPH FACTS or RETRIEVED CONTEXT provided below.
 
-2. If the provided context does not contain enough information to answer confidently, respond with exactly:
+2. If the provided context does not contain enough information to answer the question, respond with exactly:
    "I don't have enough context to answer that confidently"
    Do not guess or infer beyond what is explicitly shown.
 
@@ -98,7 +98,12 @@ export class PromptBuilderService {
 
 4. Never state that one function calls another unless that relationship appears explicitly in GRAPH FACTS.
 
-5. Do not introduce function names, file paths, or technical claims that do not appear in the context below.`;
+5. Do not introduce function names, file paths, or technical claims that do not appear in the context below.
+
+6. Critical relevance check: Before answering, ask yourself — does the RETRIEVED CONTEXT actually address the user's question?
+   - If the user asks about the project's overall purpose/objective but the context only shows middleware or utility files, respond with "I don't have enough context to answer that confidently".
+   - If the user asks about a specific feature but the context discusses unrelated code, respond with "I don't have enough context to answer that confidently".
+   - Only give a substantive answer when the context is genuinely relevant to what was asked.`;
   }
 
   /**

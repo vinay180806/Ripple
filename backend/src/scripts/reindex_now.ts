@@ -4,27 +4,34 @@ import { processIndexJob } from '../jobs/workers/index.worker';
 
 const p = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
+async function indexRepo(row: any) {
+  console.log(`\nIndexing: ${row.name} (${row.id})`);
+  await processIndexJob({
+    repoId: row.id,
+    githubRepoId: row.github_repo_id || row.id,
+    githubUrl: row.github_url,
+    ownerId: row.owner_id,
+    defaultBranch: row.default_branch || 'main',
+  });
+  console.log(`Done: ${row.name}`);
+}
+
 async function main() {
+  // Reset any stuck 'indexing' repos back to pending so they rerun cleanly
+  await p.query("UPDATE repos SET indexed_status = 'pending' WHERE indexed_status = 'indexing'");
+  console.log('Reset stuck indexing repos to pending');
+
   const res = await p.query(
-    `SELECT id, name, github_url, github_repo_id, owner_id, default_branch, indexed_status
-     FROM repos WHERE name = 'Trident-AI' LIMIT 1`
+    "SELECT id, name, github_url, github_repo_id, owner_id, default_branch FROM repos WHERE indexed_status = 'pending' ORDER BY created_at ASC"
   );
-  if (!res.rows.length) { console.error('Repo not found in DB'); return; }
-  const repo = res.rows[0];
-  console.log(`Repo: ${repo.name} | status: ${repo.indexed_status} | id: ${repo.id}`);
+  console.log(`Found ${res.rows.length} repos to index: ${res.rows.map((r: any) => r.name).join(', ')}`);
   await p.end();
 
-  // Run the index job directly with the new code (git clone + fallback chunker)
-  console.log('Starting index job directly (with git clone + fallback chunker)...');
-  await processIndexJob({
-    repoId: repo.id,
-    githubRepoId: repo.github_repo_id || repo.id,
-    githubUrl: repo.github_url,
-    ownerId: repo.owner_id,
-    defaultBranch: repo.default_branch || 'main',
-  });
+  for (const row of res.rows) {
+    await indexRepo(row);
+  }
 
-  console.log('✅ Index job complete! Check Neon code_chunks table for results.');
+  console.log('\nAll repos indexed successfully');
 }
 
 main().catch((err) => { console.error('FAILED:', err.message); process.exit(1); });
