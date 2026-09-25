@@ -2,8 +2,9 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { z } from 'zod';
 
-// Load environment variables from .env file if available
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+// Load environment variables from .env — use __dirname so this always resolves
+// to backend/.env regardless of which directory the server is started from.
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
