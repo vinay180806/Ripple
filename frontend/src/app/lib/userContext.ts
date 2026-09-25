@@ -58,13 +58,15 @@ export function invalidateUserCache(): void {
  * across Navbar, Sidebar, and any other subscriber.
  */
 export function useCurrentUser(): UserProfileData | null {
-  const [user, setUser] = useState<UserProfileData | null>(
-    // Seed from localStorage immediately to avoid flicker
-    () => (typeof window !== 'undefined' ? ApiClient.getStoredUser() : null)
-  );
+  // Always null on first render (server and client match — no hydration mismatch)
+  const [user, setUser] = useState<UserProfileData | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+
+    // Seed immediately from localStorage to minimise avatar flicker
+    const stored = ApiClient.getStoredUser();
+    if (stored && !cancelled) setUser(stored);
 
     const load = async () => {
       const profile = await fetchCurrentUser();
