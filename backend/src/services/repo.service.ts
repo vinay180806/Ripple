@@ -6,6 +6,7 @@ import { cacheService } from './cache.service';
 import { GitHubService } from './github.service';
 import { decryptToken } from '../utils/encryption';
 import { AppError } from '../types/api.types';
+import { db } from '../db/connection';
 import { logger } from '../utils/logger';
 
 export class RepoService {
@@ -42,10 +43,10 @@ export class RepoService {
 
     const existing = await RepoRepository.findByGithubRepoId(githubRepoId);
     if (existing) {
-      if (existing.owner_id === userId) {
-        return formatRepoDto(existing);
-      }
-      throw new AppError('Repository is already connected by another user account', 409, 'REPO_ALREADY_CONNECTED');
+      // Repo already indexed — just link this user to it (no re-index needed)
+      await RepoRepository.addUserRepo(userId, existing.id);
+      logger.info(`User ${userId} connected to existing repo ${existing.id} (${existing.full_name})`);
+      return formatRepoDto(existing);
     }
 
     // 1. Create repository record with status 'pending'
@@ -59,7 +60,10 @@ export class RepoService {
       indexed_status: 'pending',
     });
 
-    // 2. Dispatch BullMQ Index Job
+    // 2. Link the creating user in the junction table
+    await RepoRepository.addUserRepo(userId, repo.id);
+
+    // 3. Dispatch BullMQ Index Job
     try {
       await indexRepoQueue.addJob('index-repository', {
         repoId: repo.id,
@@ -77,7 +81,8 @@ export class RepoService {
   }
 
   public static async listUserRepos(userId: string): Promise<RepoDto[]> {
-    const repos = await RepoRepository.findByOwnerId(userId);
+    // Use junction table — returns repos connected by this user regardless of who indexed them
+    const repos = await RepoRepository.findByUserId(userId);
     return repos.map(formatRepoDto);
   }
 
@@ -87,7 +92,8 @@ export class RepoService {
       throw new AppError('Repository not found', 404, 'REPO_NOT_FOUND');
     }
 
-    if (repo.owner_id !== userId) {
+    const hasAccess = await RepoRepository.isUserConnected(userId, repoId);
+    if (!hasAccess) {
       throw new AppError('Access to this repository is forbidden', 403, 'FORBIDDEN');
     }
 
@@ -112,20 +118,35 @@ export class RepoService {
       throw new AppError('Repository not found', 404, 'REPO_NOT_FOUND');
     }
 
-    if (repo.owner_id !== userId) {
+    const hasAccess = await RepoRepository.isUserConnected(userId, repoId);
+    if (!hasAccess) {
       throw new AppError('Access to this repository is forbidden', 403, 'FORBIDDEN');
     }
 
-    await RepoRepository.delete(repoId);
-    await cacheService.deletePattern(`qa:${repoId}:*`);
-    await cacheService.deletePattern(`impact:${repoId}:*`);
-    logger.info(`Deleted repository ${repoId} and cleared associated caches`);
+    // Remove this user's link — if they were the last connected user, also delete the repo
+    await RepoRepository.removeUserRepo(userId, repoId);
+
+    const remaining = await db.query(
+      'SELECT COUNT(*) as cnt FROM user_repos WHERE repo_id = $1',
+      [repoId]
+    );
+    if (parseInt(remaining.rows[0]?.cnt ?? '0', 10) === 0) {
+      // No one else connected — clean up fully
+      await RepoRepository.delete(repoId);
+      await cacheService.deletePattern(`qa:${repoId}:*`);
+      await cacheService.deletePattern(`impact:${repoId}:*`);
+      logger.info(`All users disconnected from ${repoId} — repo and chunks deleted`);
+    } else {
+      logger.info(`User ${userId} disconnected from repo ${repoId} — repo kept for remaining users`);
+    }
   }
 
   public static async reindexRepo(repoId: string, userId: string): Promise<void> {
     const repo = await RepoRepository.findById(repoId);
     if (!repo) throw new AppError('Repository not found', 404, 'REPO_NOT_FOUND');
-    if (repo.owner_id !== userId) throw new AppError('Forbidden', 403, 'FORBIDDEN');
+    const hasAccess = await RepoRepository.isUserConnected(userId, repoId);
+    if (!hasAccess) throw new AppError('Forbidden', 403, 'FORBIDDEN');
+
 
     await indexRepoQueue.addJob('index-repository', {
       repoId: repo.id,

@@ -117,6 +117,57 @@ export class RepoRepository {
     return all.filter((r) => r.owner_id === ownerId);
   }
 
+  /** Fetch all repos a user has connected (via user_repos junction table). */
+  public static async findByUserId(userId: string): Promise<RepoRow[]> {
+    const isConnected = await db.healthCheck();
+    if (isConnected) {
+      const res = await db.query<RepoRow>(
+        `SELECT r.* FROM repos r
+         INNER JOIN user_repos ur ON ur.repo_id = r.id
+         WHERE ur.user_id = $1
+         ORDER BY ur.connected_at DESC`,
+        [userId]
+      );
+      return res.rows;
+    }
+    // Fallback: disk/memory — treat owner as the only connected user
+    return this.findByOwnerId(userId);
+  }
+
+  /** Create the user↔repo link in the junction table. Safe to call if it already exists. */
+  public static async addUserRepo(userId: string, repoId: string): Promise<void> {
+    const isConnected = await db.healthCheck();
+    if (isConnected) {
+      await db.query(
+        `INSERT INTO user_repos (user_id, repo_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [userId, repoId]
+      );
+    }
+  }
+
+  /** Remove the user↔repo link. Does NOT delete the repo or its chunks. */
+  public static async removeUserRepo(userId: string, repoId: string): Promise<void> {
+    const isConnected = await db.healthCheck();
+    if (isConnected) {
+      await db.query(`DELETE FROM user_repos WHERE user_id = $1 AND repo_id = $2`, [userId, repoId]);
+    }
+  }
+
+  /** Check if a user has access to a repo (either as owner or via user_repos). */
+  public static async isUserConnected(userId: string, repoId: string): Promise<boolean> {
+    const isConnected = await db.healthCheck();
+    if (isConnected) {
+      const res = await db.query(
+        `SELECT 1 FROM user_repos WHERE user_id = $1 AND repo_id = $2`,
+        [userId, repoId]
+      );
+      return (res.rowCount ?? 0) > 0;
+    }
+    // Fallback: check owner_id
+    const repo = await this.findById(repoId);
+    return repo?.owner_id === userId;
+  }
+
   public static async findByGithubRepoId(githubRepoId: string): Promise<RepoRow | null> {
     const isConnected = await db.healthCheck();
     if (isConnected) {
