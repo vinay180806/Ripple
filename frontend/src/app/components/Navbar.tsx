@@ -11,10 +11,25 @@ export default function Navbar() {
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  // Defer auth state to client-side only to prevent SSR/client hydration mismatch.
+  // Server renders "logged out" UI; after mount we read localStorage and re-render.
+  const [mounted, setMounted] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // Single shared fetch — no individual /auth/me call here
   const user = useCurrentUser();
-  const isLoggedIn = !!ApiClient.getToken();
+
+  useEffect(() => {
+    setMounted(true);
+    setIsLoggedIn(!!ApiClient.getToken());
+  }, []);
+
+  // Keep isLoggedIn in sync if the token changes while the page is open
+  useEffect(() => {
+    if (mounted) {
+      setIsLoggedIn(!!ApiClient.getToken());
+    }
+  }, [pathname, mounted]);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
